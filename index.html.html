@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ J-Heat2025</title>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import React, { useState, useEffect, useCallback, useRef } from "https://esm.sh/react@18";
+  import { createRoot } from "https://esm.sh/react-dom@18/client";
+
+  // ── Firebase 設定 ──────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyB3okzMTTNMAnUrJXVH05rU8uDZbVQKD08",
+    authDomain: "j-heat.firebaseapp.com",
+    projectId: "j-heat",
+    storageBucket: "j-heat.firebasestorage.app",
+    messagingSenderId: "745111283149",
+    appId: "1:745111283149:web:75c9076c5c0de15fbd5084"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const DATA_DOC = doc(db, "jheat", "main");
+
+  // ── フォーメーション定義 ───────────────────────
+  const formations = {
+    '4-4-2': [{pos:'GK',x:50,y:88},{pos:'LB',x:15,y:68},{pos:'CB',x:37,y:72},{pos:'CB',x:63,y:72},{pos:'RB',x:85,y:68},{pos:'LM',x:15,y:45},{pos:'CM',x:37,y:48},{pos:'CM',x:63,y:48},{pos:'RM',x:85,y:45},{pos:'ST',x:37,y:20},{pos:'ST',x:63,y:20}],
+    '4-3-3': [{pos:'GK',x:50,y:88},{pos:'LB',x:15,y:68},{pos:'CB',x:37,y:72},{pos:'CB',x:63,y:72},{pos:'RB',x:85,y:68},{pos:'CM',x:25,y:48},{pos:'CM',x:50,y:52},{pos:'CM',x:75,y:48},{pos:'LW',x:15,y:20},{pos:'ST',x:50,y:15},{pos:'RW',x:85,y:20}],
+    '4-2-3-1': [{pos:'GK',x:50,y:88},{pos:'LB',x:15,y:68},{pos:'CB',x:37,y:72},{pos:'CB',x:63,y:72},{pos:'RB',x:85,y:68},{pos:'CDM',x:37,y:52},{pos:'CDM',x:63,y:52},{pos:'LW',x:15,y:32},{pos:'CAM',x:50,y:35},{pos:'RW',x:85,y:32},{pos:'ST',x:50,y:15}],
+    '3-5-2': [{pos:'GK',x:50,y:88},{pos:'CB',x:25,y:72},{pos:'CB',x:50,y:72},{pos:'CB',x:75,y:72},{pos:'LM',x:10,y:48},{pos:'CM',x:30,y:52},{pos:'CM',x:50,y:48},{pos:'CM',x:70,y:52},{pos:'RM',x:90,y:48},{pos:'ST',x:37,y:20},{pos:'ST',x:63,y:20}],
+    '4-5-1': [{pos:'GK',x:50,y:88},{pos:'LB',x:15,y:68},{pos:'CB',x:37,y:72},{pos:'CB',x:63,y:72},{pos:'RB',x:85,y:68},{pos:'LM',x:10,y:45},{pos:'CM',x:30,y:50},{pos:'CM',x:50,y:48},{pos:'CM',x:70,y:50},{pos:'RM',x:90,y:45},{pos:'ST',x:50,y:15}],
+    '3-4-3': [{pos:'GK',x:50,y:88},{pos:'CB',x:25,y:72},{pos:'CB',x:50,y:75},{pos:'CB',x:75,y:72},{pos:'LM',x:15,y:50},{pos:'CM',x:37,y:48},{pos:'CM',x:63,y:48},{pos:'RM',x:85,y:50},{pos:'LW',x:20,y:20},{pos:'ST',x:50,y:15},{pos:'RW',x:80,y:20}],
+    '5-4-1': [{pos:'GK',x:50,y:88},{pos:'LWB',x:10,y:70},{pos:'CB',x:30,y:75},{pos:'CB',x:50,y:75},{pos:'CB',x:70,y:75},{pos:'RWB',x:90,y:70},{pos:'LM',x:25,y:48},{pos:'CM',x:45,y:50},{pos:'CM',x:55,y:50},{pos:'RM',x:75,y:48},{pos:'ST',x:50,y:15}],
+  };
+
+  const defaultSets = () => [
+    {id:1,formation:'4-4-2',positions:{},substitutions:[],ourScore:'',opponentScore:'',goals:[]},
+    {id:2,formation:'4-4-2',positions:{},substitutions:[],ourScore:'',opponentScore:'',goals:[]},
+    {id:3,formation:'4-4-2',positions:{},substitutions:[],ourScore:'',opponentScore:'',goals:[]},
+    {id:4,formation:'4-4-2',positions:{},substitutions:[],ourScore:'',opponentScore:'',goals:[]},
+  ];
+
+  const EDIT_PASSWORD = '0328';
+
+  // ── メインコンポーネント ───────────────────────
+  function App() {
+    const [players, setPlayers] = useState([]);
+    const [sets, setSets] = useState(defaultSets());
+    const [matchTitle, setMatchTitle] = useState('');
+    const [matchDate, setMatchDate] = useState('');
+    const [appTitle, setAppTitle] = useState('J-Heat2025');
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [isEditingAppTitle, setIsEditingAppTitle] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [syncStatus, setSyncStatus] = useState('idle'); // idle | saving | saved | error | loading
+    const [lastSaved, setLastSaved] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [newPlayerName, setNewPlayerName] = useState('');
+    const [newPlayerNumber, setNewPlayerNumber] = useState('');
+    const [editingPlayer, setEditingPlayer] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editNumber, setEditNumber] = useState('');
+    const [csvText, setCsvText] = useState('');
+    const [csvOpen, setCsvOpen] = useState(false);
+    const csvRef = useRef('');
+    const saveTimer = useRef(null);
+    const isInitialLoad = useRef(true);
+
+    const showToast = (msg, type = 'info') => {
+      setToast({ msg, type });
+      setTimeout(() => setToast(null), 3000);
+    };
+
+    // ── Firebase: 初回読み込み ──────────────────
+    useEffect(() => {
+      setSyncStatus('loading');
+      getDoc(DATA_DOC).then(snap => {
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.players) setPlayers(d.players);
+          if (d.sets) setSets(d.sets);
+          if (d.matchTitle !== undefined) setMatchTitle(d.matchTitle);
+          if (d.matchDate !== undefined) setMatchDate(d.matchDate);
+          if (d.appTitle) setAppTitle(d.appTitle);
+          if (d.lastSaved) setLastSaved(d.lastSaved);
+          showToast('☁️ Firebaseから読み込みました', 'success');
+        }
+      }).catch(err => {
+        showToast('❌ 読み込みエラー: ' + err.message, 'error');
+      }).finally(() => {
+        setIsLoading(false);
+        setSyncStatus('idle');
+        setTimeout(() => { isInitialLoad.current = false; }, 300);
+      });
+    }, []);
+
+    // ── Firebase: 自動保存（デバウンス）──────────
+    useEffect(() => {
+      if (isInitialLoad.current) return;
+      clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(async () => {
+        setSyncStatus('saving');
+        try {
+          const now = new Date().toISOString();
+          await setDoc(DATA_DOC, { players, sets, matchTitle, matchDate, appTitle, lastSaved: now });
+          setSyncStatus('saved');
+          setLastSaved(now);
+          setTimeout(() => setSyncStatus('idle'), 2500);
+        } catch (err) {
+          setSyncStatus('error');
+          showToast('❌ 保存エラー: ' + err.message, 'error');
+        }
+      }, 1000);
+      return () => clearTimeout(saveTimer.current);
+    }, [players, sets, matchTitle, matchDate, appTitle]);
+
+    // ── ヘルパー ───────────────────────────────
+    const getAppearances = pid => {
+      let c = 0;
+      sets.forEach(s => {
+        const inPos = Object.values(s.positions).includes(pid);
+        const subOut = (s.substitutions||[]).some(x=>x.playerOut===pid);
+        const subIn  = (s.substitutions||[]).some(x=>x.playerIn===pid);
+        if (inPos && subOut) c += 0.5;
+        else if (inPos) c += 1;
+        else if (subIn) c += 0.5;
+      });
+      return c;
+    };
+    const getGoals   = pid => sets.reduce((n,s)=>n+(s.goals||[]).filter(g=>g.scorer===pid).length,0);
+    const getAssists = pid => sets.reduce((n,s)=>n+(s.goals||[]).filter(g=>g.assist===pid).length,0);
+
+    const addPlayer = () => {
+      if (!newPlayerName.trim() || players.length >= 60) return;
+      setPlayers(prev => [...prev, {id:Date.now(), name:newPlayerName.trim(), number:newPlayerNumber.trim()||String(prev.length+1), attending:true}]);
+      setNewPlayerName(''); setNewPlayerNumber('');
+    };
+
+    const removePlayer = pid => {
+      setPlayers(players.filter(p=>p.id!==pid));
+      setSets(sets.map(s => {
+        const pos = {...s.positions};
+        Object.keys(pos).forEach(k=>{ if(pos[k]===pid) delete pos[k]; });
+        return {...s, positions:pos, substitutions:(s.substitutions||[]).filter(x=>x.playerOut!==pid&&x.playerIn!==pid)};
+      }));
+    };
+
+    const assignPlayer = (setId, idx, pid) => {
+      setSets(sets.map(s => {
+        if (s.id !== setId) return s;
+        const pos = {...s.positions};
+        if (pid === null) { delete pos[idx]; }
+        else { Object.keys(pos).forEach(k=>{if(pos[k]===pid)delete pos[k];}); pos[idx]=pid; }
+        return {...s, positions:pos};
+      }));
+    };
+
+    const handleCsvImport = () => {
+      const text = csvRef.current;
+      if (!text.trim()) { showToast('⚠️ テキストを入力してください','error'); return; }
+      const lines = text.trim().split(/\r?\n/);
+      let added = 0;
+      const newPlayers = [];
+      lines.forEach((line, i) => {
+        const ci = line.indexOf(',');
+        if (ci === -1) return;
+        const number = line.slice(0,ci).trim();
+        const name   = line.slice(ci+1).trim();
+        if (number && name && players.length+added < 60) {
+          newPlayers.push({id: Date.now()+i*1000+Math.floor(Math.random()*999), name, number, attending:true});
+          added++;
+        }
+      });
+      if (newPlayers.length > 0) {
+        setPlayers(prev=>[...prev,...newPlayers]);
+        setCsvText(''); csvRef.current=''; setCsvOpen(false);
+        showToast(`✅ ${added}人登録しました！`, 'success');
+      } else {
+        showToast('⚠️ 形式が正しくありません。例: 10,田中太郎','error');
+      }
+    };
+
+    const attending = players.filter(p=>p.attending);
+
+    // ── ステータスバー設定 ─────────────────────
+    const statusCfg = {
+      idle:    {icon:'☁️', text: lastSaved ? `保存済 ${new Date(lastSaved).toLocaleTimeString('ja-JP')}` : '未保存', color:'#94a3b8'},
+      loading: {icon:'⏳', text:'読み込み中...', color:'#f59e0b'},
+      saving:  {icon:'⏳', text:'Firebaseに保存中...', color:'#f59e0b'},
+      saved:   {icon:'✅', text:'Firebase保存完了！', color:'#10b981'},
+      error:   {icon:'❌', text:'保存エラー', color:'#ef4444'},
+    }[syncStatus];
+
+    // ── フィールドビュー ───────────────────────
+    const FieldView = ({ set }) => {
+      const formation = formations[set.formation] || formations['4-4-2'];
+      return (
+        React.createElement('div', {style:{background:'white',borderRadius:'8px',boxShadow:'0 2px 8px rgba(0,0,0,0.1)',padding:'8px'}},
+          // ヘッダー
+          React.createElement('div', {style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px',gap:'4px'}},
+            React.createElement('span', {style:{fontWeight:'bold',fontSize:'12px'}}, `セット ${set.id}`),
+            React.createElement('div', {style:{display:'flex',gap:'4px'}},
+              React.createElement('select', {value:set.formation, disabled:!isEditMode,
+                onChange:e=>setSets(sets.map(s=>s.id===set.id?{...s,formation:e.target.value,positions:{}}:s)),
+                style:{fontSize:'10px',padding:'2px 4px',border:'1px solid #d1d5db',borderRadius:'4px'}},
+                Object.keys(formations).map(f=>React.createElement('option',{key:f,value:f},f))
+              ),
+              isEditMode && React.createElement('button',{
+                onClick:()=>setSets(sets.map(s=>s.id===set.id?{...s,positions:{},substitutions:[],goals:[]}:s)),
+                style:{background:'#ef4444',color:'white',border:'none',borderRadius:'4px',padding:'2px 6px',cursor:'pointer',fontSize:'11px'}
+              },'↺')
+            )
+          ),
+          // スコア
+          React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',background:'#f1f5f9',padding:'6px',borderRadius:'6px',marginBottom:'6px'}},
+            React.createElement('input',{type:'number',min:'0',value:set.ourScore,placeholder:'0',disabled:!isEditMode,
+              onChange:e=>setSets(sets.map(s=>s.id===set.id?{...s,ourScore:e.target.value}:s)),
+              style:{width:'40px',textAlign:'center',fontWeight:'bold',fontSize:'16px',border:'1px solid #d1d5db',borderRadius:'4px',padding:'2px'}}),
+            React.createElement('span',{style:{fontWeight:'bold',fontSize:'16px'}},'-'),
+            React.createElement('input',{type:'number',min:'0',value:set.opponentScore,placeholder:'0',disabled:!isEditMode,
+              onChange:e=>setSets(sets.map(s=>s.id===set.id?{...s,opponentScore:e.target.value}:s)),
+              style:{width:'40px',textAlign:'center',fontWeight:'bold',fontSize:'16px',border:'1px solid #d1d5db',borderRadius:'4px',padding:'2px'}})
+          ),
+          // フィールド
+          React.createElement('div',{style:{position:'relative',borderRadius:'8px',overflow:'hidden',
+            background:'linear-gradient(to bottom,#2d5016,#3d6b1f 40%,#3d6b1f 60%,#2d5016)',
+            aspectRatio:'2/3',minHeight:'180px',maxHeight:'300px'}},
+            React.createElement('div',{style:{position:'absolute',top:0,left:'32.5%',width:'35%',height:'12%',border:'2px solid rgba(255,255,255,0.4)'}}),
+            React.createElement('div',{style:{position:'absolute',bottom:0,left:'32.5%',width:'35%',height:'12%',border:'2px solid rgba(255,255,255,0.4)'}}),
+            React.createElement('div',{style:{position:'absolute',top:'50%',left:0,right:0,height:'2px',background:'rgba(255,255,255,0.4)'}}),
+            React.createElement('div',{style:{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',width:'60px',height:'60px',border:'2px solid rgba(255,255,255,0.4)',borderRadius:'50%'}}),
+            React.createElement('div',{style:{position:'absolute',inset:0,border:'2px solid rgba(255,255,255,0.4)'}}),
+            ...formation.map((pos,idx) => {
+              const pid = set.positions[idx];
+              const player = pid ? players.find(p=>p.id===pid) : null;
+              const sub = (set.substitutions||[]).find(s=>s.playerOut===pid);
+              const subIn = sub ? players.find(p=>p.id===sub.playerIn) : null;
+              return React.createElement('div',{key:idx,style:{position:'absolute',left:`${pos.x}%`,top:`${pos.y}%`,transform:'translate(-50%,-50%)',zIndex:10}},
+                player
+                  ? React.createElement('div',{style:{position:'relative',cursor:'pointer'}},
+                      isEditMode && React.createElement('button',{onClick:()=>assignPlayer(set.id,idx,null),
+                        style:{position:'absolute',top:'-4px',right:'-4px',width:'14px',height:'14px',background:'#ef4444',color:'white',border:'none',borderRadius:'50%',fontSize:'9px',cursor:'pointer',zIndex:20,fontWeight:'bold'}},'×'),
+                      React.createElement('div',{style:{textAlign:'center'}},
+                        React.createElement('div',{style:{background:'#1e293b',color:'white',fontSize:'8px',padding:'1px 3px',borderRadius:'3px',fontWeight:'bold',whiteSpace:'nowrap',marginBottom:'1px'}},pos.pos),
+                        React.createElement('div',{style:{background:'white',color:'#1e293b',fontSize:'8px',padding:'1px 4px',borderRadius:'3px',whiteSpace:'nowrap',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis'}},player.name),
+                        subIn && React.createElement('div',{style:{background:'#fed7aa',color:'#c2410c',fontSize:'7px',padding:'1px 3px',borderRadius:'3px',marginTop:'1px',border:'1px solid #fb923c',whiteSpace:'nowrap',maxWidth:'64px',overflow:'hidden',textOverflow:'ellipsis'}},subIn.name)
+                      )
+                    )
+                  : React.createElement('div',{style:{position:'relative',cursor:'pointer'}},
+                      React.createElement('div',{style:{textAlign:'center'}},
+                        React.createElement('div',{style:{background:'rgba(255,255,255,0.85)',color:'#1e293b',fontSize:'8px',padding:'1px 3px',borderRadius:'3px',fontWeight:'bold',whiteSpace:'nowrap'}},pos.pos),
+                        isEditMode && React.createElement('div',{style:{color:'white',fontSize:'16px',fontWeight:'bold',marginTop:'2px'}},'+')
+                      ),
+                      isEditMode && React.createElement('select',{value:'',onChange:e=>assignPlayer(set.id,idx,e.target.value?parseInt(e.target.value):null),
+                        style:{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}},
+                        React.createElement('option',{value:''},'選択'),
+                        ...attending.map(p=>React.createElement('option',{key:p.id,value:p.id},`#${p.number} ${p.name}`))
+                      )
+                    )
+              );
+            })
+          ),
+          // 交代・ゴール（編集モード時のみ）
+          isEditMode && React.createElement('div',{style:{marginTop:'8px',borderTop:'1px solid #e5e7eb',paddingTop:'8px'}},
+            React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}},
+              React.createElement('span',{style:{fontSize:'11px',fontWeight:'bold'}},'🔄 交代予定'),
+              React.createElement('button',{onClick:()=>setSets(sets.map(s=>s.id===set.id?{...s,substitutions:[...(s.substitutions||[]),{id:Date.now(),playerOut:null,playerIn:null}]}:s)),
+                style:{background:'#3b82f6',color:'white',border:'none',borderRadius:'4px',padding:'2px 8px',fontSize:'10px',cursor:'pointer'}},'+ 追加')
+            ),
+            ...(set.substitutions||[]).map(sub=>
+              React.createElement('div',{key:sub.id,style:{display:'flex',alignItems:'center',gap:'4px',background:'#f9fafb',padding:'4px',borderRadius:'4px',marginBottom:'3px'}},
+                React.createElement('select',{value:sub.playerOut||'',onChange:e=>setSets(sets.map(s=>s.id===set.id?{...s,substitutions:s.substitutions.map(sb=>sb.id===sub.id?{...sb,playerOut:e.target.value?parseInt(e.target.value):null}:sb)}:s)),style:{flex:1,fontSize:'10px',padding:'2px',border:'1px solid #d1d5db',borderRadius:'4px'}},
+                  React.createElement('option',{value:''},'OUT'),
+                  ...attending.filter(p=>Object.values(set.positions).includes(p.id)).map(p=>React.createElement('option',{key:p.id,value:p.id},`#${p.number} ${p.name}`))
+                ),
+                React.createElement('span',{style:{fontSize:'10px',color:'#9ca3af'}},'⇄'),
+                React.createElement('select',{value:sub.playerIn||'',onChange:e=>setSets(sets.map(s=>s.id===set.id?{...s,substitutions:s.substitutions.map(sb=>sb.id===sub.id?{...sb,playerIn:e.target.value?parseInt(e.target.value):null}:sb)}:s)),style:{flex:1,fontSize:'10px',padding:'2px',border:'1px solid #d1d5db',borderRadius:'4px'}},
+                  React.createElement('option',{value:''},'IN'),
+                  ...attending.filter(p=>!Object.values(set.positions).includes(p.id)).map(p=>React.createElement('option',{key:p.id,value:p.id},`#${p.number} ${p.name}`))
+                ),
+                React.createElement('button',{onClick:()=>setSets(sets.map(s=>s.id===set.id?{...s,substitutions:s.substitutions.filter(sb=>sb.id!==sub.id)}:s)),style:{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:'12px'}},'🗑')
+              )
+            ),
+            React.createElement('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',margin:'8px 0 6px'}},
+              React.createElement('span',{style:{fontSize:'11px',fontWeight:'bold'}},'⚽ ゴール記録'),
+              React.createElement('button',{onClick:()=>setSets(sets.map(s=>s.id===set.id?{...s,goals:[...(s.goals||[]),{id:Date.now(),scorer:null,assist:null}]}:s)),
+                style:{background:'#22c55e',color:'white',border:'none',borderRadius:'4px',padding:'2px 8px',fontSize:'10px',cursor:'pointer'}},'+ 追加')
+            ),
+            ...(set.goals||[]).map(goal=>
+              React.createElement('div',{key:goal.id,style:{display:'flex',alignItems:'center',gap:'4px',background:'#f0fdf4',padding:'4px',borderRadius:'4px',marginBottom:'3px'}},
+                React.createElement('select',{value:goal.scorer||'',onChange:e=>setSets(sets.map(s=>s.id===set.id?{...s,goals:s.goals.map(g=>g.id===goal.id?{...g,scorer:e.target.value?parseInt(e.target.value):null}:g)}:s)),style:{flex:1,fontSize:'10px',padding:'2px',border:'1px solid #d1d5db',borderRadius:'4px'}},
+                  React.createElement('option',{value:''},'得点者'),
+                  ...attending.map(p=>React.createElement('option',{key:p.id,value:p.id},`#${p.number} ${p.name}`))
+                ),
+                React.createElement('span',{style:{fontSize:'10px',color:'#9ca3af'}},'→'),
+                React.createElement('select',{value:goal.assist||'',onChange:e=>setSets(sets.map(s=>s.id===set.id?{...s,goals:s.goals.map(g=>g.id===goal.id?{...g,assist:e.target.value?parseInt(e.target.value):null}:g)}:s)),style:{flex:1,fontSize:'10px',padding:'2px',border:'1px solid #d1d5db',borderRadius:'4px'}},
+                  React.createElement('option',{value:''},'アシスト'),
+                  ...attending.map(p=>React.createElement('option',{key:p.id,value:p.id},`#${p.number} ${p.name}`))
+                ),
+                React.createElement('button',{onClick:()=>setSets(sets.map(s=>s.id===set.id?{...s,goals:s.goals.filter(g=>g.id!==goal.id)}:s)),style:{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:'12px'}},'🗑')
+              )
+            )
+          )
+        )
+      );
+    };
+
+    if (isLoading) return React.createElement('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'16px',background:'#f1f5f9'}},
+      React.createElement('div',{style:{fontSize:'48px'}},'⚽'),
+      React.createElement('p',{style:{color:'#64748b',fontWeight:'600',fontSize:'16px'}},'Firebaseからデータを読み込み中...')
+    );
+
+    return React.createElement('div',{style:{background:'linear-gradient(135deg,#f1f5f9,#e2e8f0)',minHeight:'100vh',padding:'12px',fontFamily:'-apple-system,BlinkMacSystemFont,sans-serif'}},
+
+      // Toast
+      toast && React.createElement('div',{style:{position:'fixed',top:'12px',right:'12px',zIndex:100,background:'white',borderRadius:'8px',padding:'10px 14px',boxShadow:'0 4px 20px rgba(0,0,0,0.15)',border:`2px solid ${toast.type==='success'?'#10b981':toast.type==='error'?'#ef4444':'#3b82f6'}`,maxWidth:'280px'}},
+        React.createElement('p',{style:{fontSize:'12px',fontWeight:'bold',margin:0}},toast.msg)
+      ),
+
+      // パスワードダイアログ
+      showPasswordDialog && React.createElement('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200}},
+        React.createElement('div',{style:{background:'white',borderRadius:'12px',padding:'24px',maxWidth:'320px',width:'90%'}},
+          React.createElement('h2',{style:{fontWeight:'bold',fontSize:'18px',marginBottom:'8px'}},'編集モードに切り替え'),
+          React.createElement('p',{style:{fontSize:'13px',color:'#6b7280',marginBottom:'16px'}},'パスワードを入力してください'),
+          React.createElement('input',{type:'password',value:passwordInput,autoFocus:true,
+            onChange:e=>setPasswordInput(e.target.value),
+            onKeyPress:e=>{if(e.key==='Enter'){if(passwordInput===EDIT_PASSWORD){setIsEditMode(true);setShowPasswordDialog(false);setPasswordInput('');}else{showToast('❌ パスワードが正しくありません','error');setPasswordInput('');}}},
+            placeholder:'パスワード',style:{width:'100%',padding:'8px 12px',border:'2px solid #d1d5db',borderRadius:'6px',marginBottom:'12px',fontSize:'14px'}}),
+          React.createElement('div',{style:{display:'flex',gap:'8px'}},
+            React.createElement('button',{onClick:()=>{if(passwordInput===EDIT_PASSWORD){setIsEditMode(true);setShowPasswordDialog(false);setPasswordInput('');}else{showToast('❌ パスワードが正しくありません','error');setPasswordInput('');}},
+              style:{flex:1,background:'#3b82f6',color:'white',border:'none',borderRadius:'6px',padding:'8px',cursor:'pointer',fontWeight:'bold'}},'OK'),
+            React.createElement('button',{onClick:()=>{setShowPasswordDialog(false);setPasswordInput('');},
+              style:{flex:1,background:'#9ca3af',color:'white',border:'none',borderRadius:'6px',padding:'8px',cursor:'pointer',fontWeight:'bold'}},'キャンセル')
+          )
+        )
+      ),
+
+      // 確認ダイアログ
+      deleteConfirmId && React.createElement('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:200}},
+        React.createElement('div',{style:{background:'white',borderRadius:'12px',padding:'24px',maxWidth:'320px',width:'90%'}},
+          React.createElement('h2',{style:{fontWeight:'bold',fontSize:'18px',marginBottom:'8px'}},'確認'),
+          React.createElement('p',{style:{fontSize:'13px',color:'#6b7280',marginBottom:'16px'}},
+            deleteConfirmId==='new'?'試合データをリセットして新しい試合を開始しますか？':'全選手を削除しますか？'),
+          React.createElement('div',{style:{display:'flex',gap:'8px'}},
+            React.createElement('button',{onClick:()=>{
+              if(deleteConfirmId==='new'){setMatchTitle('');setMatchDate('');setSets(defaultSets());}
+              else{setPlayers([]);setSets(defaultSets());}
+              setDeleteConfirmId(null);
+            },style:{flex:1,background:deleteConfirmId==='new'?'#22c55e':'#ef4444',color:'white',border:'none',borderRadius:'6px',padding:'8px',cursor:'pointer',fontWeight:'bold'}},
+              deleteConfirmId==='new'?'開始':'削除'),
+            React.createElement('button',{onClick:()=>setDeleteConfirmId(null),style:{flex:1,background:'#9ca3af',color:'white',border:'none',borderRadius:'6px',padding:'8px',cursor:'pointer',fontWeight:'bold'}},'キャンセル')
+          )
+        )
+      ),
+
+      // ヘッダー
+      React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px',flexWrap:'wrap',gap:'8px'}},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:statusCfg.color,fontWeight:600}},
+          React.createElement('span',null,statusCfg.icon),
+          React.createElement('span',null,statusCfg.text)
+        ),
+        isEditingAppTitle
+          ? React.createElement('input',{value:appTitle,autoFocus:true,onChange:e=>setAppTitle(e.target.value),
+              onBlur:()=>setIsEditingAppTitle(false),onKeyPress:e=>{if(e.key==='Enter')setIsEditingAppTitle(false);},
+              style:{fontSize:'22px',fontWeight:'bold',border:'none',borderBottom:'2px solid #3b82f6',outline:'none',background:'transparent'}})
+          : React.createElement('h1',{style:{fontSize:'22px',fontWeight:'bold',color:'#1e293b',cursor:isEditMode?'pointer':'default'},
+              onClick:()=>isEditMode&&setIsEditingAppTitle(true)},`⚽ ${appTitle}`),
+        React.createElement('button',{onClick:()=>{if(!isEditMode)setShowPasswordDialog(true);else{setIsEditMode(false);showToast('💾 保存完了','success');}},
+          style:{padding:'6px 16px',borderRadius:'6px',border:'none',cursor:'pointer',fontWeight:'bold',fontSize:'13px',background:isEditMode?'#f97316':'#22c55e',color:'white'}},
+          isEditMode?'🔓 編集中':'👁️ 閲覧')
+      ),
+
+      // Firebase バナー
+      React.createElement('div',{style:{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:'8px',padding:'8px 12px',marginBottom:'12px',display:'flex',alignItems:'center',gap:'10px'}},
+        React.createElement('span',{style:{fontSize:'18px'}},'🔥'),
+        React.createElement('div',{style:{flex:1,fontSize:'11px',color:'#9a3412'}},
+          React.createElement('strong',null,'Firebase リアルタイム同期'),
+          ' — データはGoogleのクラウドに自動保存。どのデバイス・どのブラウザからでもアクセス可能。'
+        )
+      ),
+
+      // 試合情報
+      React.createElement('div',{style:{background:'white',borderRadius:'8px',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',padding:'12px',marginBottom:'12px'}},
+        isEditingTitle
+          ? React.createElement('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}},
+              React.createElement('input',{type:'date',value:matchDate,onChange:e=>setMatchDate(e.target.value),style:{padding:'6px',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'13px'}}),
+              React.createElement('input',{type:'text',value:matchTitle,autoFocus:true,onChange:e=>setMatchTitle(e.target.value),onKeyPress:e=>{if(e.key==='Enter')setIsEditingTitle(false);},
+                placeholder:'試合名（例: vs 〇〇チーム）',style:{flex:1,minWidth:'160px',padding:'6px 10px',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'13px'}}),
+              React.createElement('button',{onClick:()=>setIsEditingTitle(false),style:{background:'#3b82f6',color:'white',border:'none',borderRadius:'6px',padding:'6px 16px',cursor:'pointer',fontWeight:'bold'}},'保存')
+            )
+          : React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px'}},
+              React.createElement('div',{onClick:()=>isEditMode&&setIsEditingTitle(true),style:{flex:1,cursor:isEditMode?'pointer':'default',padding:'4px',borderRadius:'4px'}},
+                (matchDate||matchTitle)
+                  ? React.createElement('div',null,
+                      matchDate && React.createElement('div',{style:{fontSize:'14px',fontWeight:'600',color:'#475569'}},matchDate),
+                      matchTitle && React.createElement('div',{style:{fontSize:'16px',fontWeight:'bold',color:'#1e293b'}},matchTitle)
+                    )
+                  : React.createElement('div',{style:{color:'#9ca3af',fontSize:'13px'}},isEditMode?'クリックして試合情報を入力':'試合情報なし')
+              ),
+              React.createElement('button',{disabled:!isEditMode,onClick:()=>setDeleteConfirmId('new'),
+                style:{padding:'6px 14px',borderRadius:'6px',border:'none',cursor:isEditMode?'pointer':'not-allowed',fontWeight:'bold',fontSize:'12px',background:isEditMode?'#22c55e':'#e5e7eb',color:isEditMode?'white':'#9ca3af'}},
+                '+ 新しい試合')
+            )
+      ),
+
+      // 選手リスト
+      React.createElement('div',{style:{background:'white',borderRadius:'8px',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',padding:'12px',marginBottom:'12px'}},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}},
+          React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
+            React.createElement('span',{style:{fontSize:'20px'}},'👥'),
+            React.createElement('h2',{style:{fontWeight:'bold',fontSize:'16px',margin:0}},`選手リスト (${players.length}/60)`),
+            React.createElement('span',{style:{fontSize:'12px',color:'#6b7280'}},`出席: ${attending.length}人`)
+          ),
+          isEditMode && players.length > 0 && React.createElement('button',{onClick:()=>setDeleteConfirmId('clear'),
+            style:{background:'#ef4444',color:'white',border:'none',borderRadius:'6px',padding:'4px 10px',fontSize:'11px',cursor:'pointer',fontWeight:'bold'}},'🗑 全員削除')
+        ),
+        // 個別追加
+        React.createElement('div',{style:{display:'flex',gap:'8px',marginBottom:'8px'}},
+          React.createElement('input',{type:'text',placeholder:'選手名',value:newPlayerName,disabled:!isEditMode,
+            onChange:e=>setNewPlayerName(e.target.value),onKeyPress:e=>{if(e.key==='Enter')addPlayer();},
+            style:{flex:1,padding:'7px 10px',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'13px',background:isEditMode?'white':'#f9fafb'}}),
+          React.createElement('input',{type:'text',placeholder:'番号',value:newPlayerNumber,disabled:!isEditMode,
+            onChange:e=>setNewPlayerNumber(e.target.value),onKeyPress:e=>{if(e.key==='Enter')addPlayer();},
+            style:{width:'64px',padding:'7px 8px',border:'1px solid #d1d5db',borderRadius:'6px',fontSize:'13px',background:isEditMode?'white':'#f9fafb'}})
+        ),
+        React.createElement('button',{onClick:addPlayer,disabled:players.length>=60||!isEditMode,
+          style:{width:'100%',padding:'8px',borderRadius:'6px',border:'none',cursor:isEditMode&&players.length<60?'pointer':'not-allowed',
+            background:isEditMode&&players.length<60?'#3b82f6':'#e5e7eb',color:isEditMode&&players.length<60?'white':'#9ca3af',fontWeight:'bold',fontSize:'13px',marginBottom:'10px'}},'+ 選手追加'),
+
+        // CSV一括登録
+        isEditMode && React.createElement('div',{style:{background:'#f9fafb',borderRadius:'8px',border:'1px solid #e5e7eb',overflow:'hidden',marginBottom:'10px'}},
+          React.createElement('button',{onClick:()=>setCsvOpen(!csvOpen),style:{width:'100%',padding:'10px 14px',background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:'13px',fontWeight:'600',color:'#374151'}},
+            React.createElement('span',null,'📋 CSV一括登録'),
+            React.createElement('span',{style:{fontSize:'12px',color:'#6b7280'}},csvOpen?'▲ 閉じる':'▼ 開く')
+          ),
+          csvOpen && React.createElement('div',{style:{padding:'12px',borderTop:'1px solid #e5e7eb'}},
+            React.createElement('div',{style:{background:'#dbeafe',borderRadius:'6px',padding:'8px 10px',marginBottom:'10px',fontSize:'11px',color:'#1e40af',lineHeight:1.6}},
+              React.createElement('strong',null,'入力形式：'),' 背番号,選手名（1行1人）',React.createElement('br'),
+              '例：',React.createElement('code',{style:{background:'#bfdbfe',padding:'1px 4px',borderRadius:'3px'}},'10,田中太郎')
+            ),
+            React.createElement('textarea',{
+              value:csvText,
+              onChange:e=>{setCsvText(e.target.value);csvRef.current=e.target.value;},
+              onInput:e=>{setCsvText(e.target.value);csvRef.current=e.target.value;},
+              onPaste:e=>{const p=e.clipboardData.getData('text');setTimeout(()=>{const v=csvRef.current+p;setCsvText(v);csvRef.current=v;},0);},
+              placeholder:'10,田中太郎\n11,佐藤花子\n12,鈴木次郎',
+              style:{width:'100%',padding:'10px',border:'2px solid #3b82f6',borderRadius:'6px',fontSize:'13px',fontFamily:'monospace',height:'120px',marginBottom:'8px',resize:'vertical',outline:'none',lineHeight:1.6,display:'block'}
+            }),
+            React.createElement('div',{style:{fontSize:'11px',color:'#6b7280',marginBottom:'8px'}},
+              `入力文字数: ${csvText.length}文字 / 検出: ${csvText.trim()?csvText.trim().split('\n').filter(l=>l.includes(',')).length:0}人`
+            ),
+            React.createElement('div',{style:{display:'flex',gap:'8px'}},
+              React.createElement('button',{onClick:handleCsvImport,style:{flex:1,background:'#22c55e',color:'white',border:'none',borderRadius:'6px',padding:'10px',cursor:'pointer',fontWeight:'bold',fontSize:'13px'}},'✅ 一括登録する'),
+              React.createElement('button',{onClick:()=>{setCsvText('');csvRef.current='';setCsvOpen(false);},style:{padding:'10px 16px',background:'#9ca3af',color:'white',border:'none',borderRadius:'6px',cursor:'pointer',fontWeight:'bold',fontSize:'13px'}},'クリア')
+            )
+          )
+        ),
+
+        // 選手一覧
+        React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'6px',maxHeight:'220px',overflowY:'auto'}},
+          ...attending.map(player => {
+            const goals = getGoals(player.id);
+            const assists = getAssists(player.id);
+            const app = getAppearances(player.id);
+            return React.createElement('div',{key:player.id,style:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 8px',borderRadius:'6px',border:'1px solid #bbf7d0',background:'#f0fdf4'}},
+              editingPlayer===player.id
+                ? React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'4px',flex:1}},
+                    React.createElement('input',{value:editNumber,onChange:e=>setEditNumber(e.target.value),placeholder:'番号',style:{width:'40px',padding:'3px',border:'1px solid #d1d5db',borderRadius:'4px',fontSize:'11px'}}),
+                    React.createElement('input',{value:editName,autoFocus:true,onChange:e=>setEditName(e.target.value),
+                      onKeyPress:e=>{if(e.key==='Enter'){setPlayers(players.map(p=>p.id===player.id?{...p,name:editName.trim(),number:editNumber.trim()||p.number}:p));setEditingPlayer(null);}},
+                      style:{flex:1,padding:'3px 6px',border:'1px solid #d1d5db',borderRadius:'4px',fontSize:'12px'}}),
+                    React.createElement('button',{onClick:()=>{setPlayers(players.map(p=>p.id===player.id?{...p,name:editName.trim(),number:editNumber.trim()||p.number}:p));setEditingPlayer(null);},
+                      style:{background:'#3b82f6',color:'white',border:'none',borderRadius:'4px',padding:'2px 6px',cursor:'pointer',fontSize:'10px'}},'保存'),
+                    React.createElement('button',{onClick:()=>setEditingPlayer(null),style:{background:'#9ca3af',color:'white',border:'none',borderRadius:'4px',padding:'2px 6px',cursor:'pointer',fontSize:'10px'}},'✕')
+                  )
+                : React.createElement(React.Fragment,null,
+                    React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'6px',flex:1}},
+                      React.createElement('button',{onClick:()=>setPlayers(players.map(p=>p.id===player.id?{...p,attending:false}:p)),disabled:!isEditMode,
+                        style:{background:'none',border:'none',cursor:isEditMode?'pointer':'default',color:'#22c55e',padding:0,fontSize:'18px'}},'✅'),
+                      React.createElement('span',{onClick:()=>isEditMode&&(setEditingPlayer(player.id),setEditName(player.name),setEditNumber(player.number)),
+                        style:{fontSize:'12px',cursor:isEditMode?'pointer':'default'}},
+                        React.createElement('strong',null,`#${player.number}`),' ',player.name)
+                    ),
+                    React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'3px',flexShrink:0}},
+                      React.createElement('span',{style:{background:'#dbeafe',color:'#1d4ed8',padding:'1px 6px',borderRadius:'4px',fontSize:'10px',fontWeight:'bold'}},`${app}本`),
+                      goals>0 && React.createElement('span',{style:{background:'#fef9c3',color:'#92400e',padding:'1px 5px',borderRadius:'4px',fontSize:'10px',fontWeight:'bold'}},`⚽${goals}`),
+                      assists>0 && React.createElement('span',{style:{background:'#f3e8ff',color:'#6b21a8',padding:'1px 5px',borderRadius:'4px',fontSize:'10px',fontWeight:'bold'}},`🅰${assists}`),
+                      isEditMode && React.createElement('button',{onClick:()=>removePlayer(player.id),style:{background:'none',border:'none',cursor:'pointer',color:'#ef4444',padding:0,fontSize:'13px'}},'🗑')
+                    )
+                  )
+            );
+          })
+        )
+      ),
+
+      // フォーメーショングリッド
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'12px'}},
+        ...sets.map(set=>React.createElement(FieldView,{key:set.id,set}))
+      ),
+
+      // 出場本数
+      attending.length > 0 && React.createElement('div',{style:{background:'white',borderRadius:'8px',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',padding:'12px',marginBottom:'12px'}},
+        React.createElement('h2',{style:{fontWeight:'bold',fontSize:'15px',marginBottom:'10px'}},'📊 出場本数一覧'),
+        React.createElement('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))',gap:'6px'}},
+          ...attending.map(player=>{
+            const app=getAppearances(player.id), goals=getGoals(player.id), assists=getAssists(player.id);
+            const bc=app===0?'#fca5a5':app<2?'#fcd34d':'#86efac';
+            const tc=app===0?'#991b1b':app<2?'#78350f':'#14532d';
+            return React.createElement('div',{key:player.id,style:{padding:'8px',borderRadius:'6px',border:`1px solid ${bc}`,background:app===0?'#fef2f2':app<2?'#fffbeb':'#f0fdf4',textAlign:'center'}},
+              React.createElement('div',{style:{fontWeight:'bold',fontSize:'12px'}},`#${player.number}`),
+              React.createElement('div',{style:{fontSize:'10px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:'4px'}},player.name),
+              React.createElement('span',{style:{background:bc,color:tc,padding:'1px 8px',borderRadius:'4px',fontSize:'11px',fontWeight:'bold'}},`${app}本`),
+              (goals>0||assists>0) && React.createElement('div',{style:{display:'flex',justifyContent:'center',gap:'4px',marginTop:'3px',fontSize:'10px'}},
+                goals>0&&React.createElement('span',null,`⚽${goals}`),
+                assists>0&&React.createElement('span',null,`🅰${assists}`)
+              )
+            );
+          })
+        )
+      ),
+
+      // 欠席者
+      players.filter(p=>!p.attending).length > 0 && React.createElement('div',{style:{background:'white',borderRadius:'8px',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',padding:'12px'}},
+        React.createElement('h2',{style:{fontWeight:'bold',fontSize:'14px',color:'#6b7280',marginBottom:'8px'}},`欠席者 (${players.filter(p=>!p.attending).length}人)`),
+        React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:'6px'}},
+          ...players.filter(p=>!p.attending).map(player=>
+            React.createElement('div',{key:player.id,style:{display:'flex',alignItems:'center',gap:'6px',padding:'5px 10px',background:'#f3f4f6',border:'1px solid #d1d5db',borderRadius:'6px'}},
+              React.createElement('button',{onClick:()=>isEditMode&&setPlayers(players.map(p=>p.id===player.id?{...p,attending:true}:p)),disabled:!isEditMode,
+                style:{background:'none',border:'none',cursor:isEditMode?'pointer':'default',color:'#9ca3af',padding:0,fontSize:'16px'}},'⬜'),
+              React.createElement('span',{style:{fontSize:'12px'}},React.createElement('strong',null,`#${player.number}`),' ',player.name),
+              isEditMode&&React.createElement('button',{onClick:()=>removePlayer(player.id),style:{background:'none',border:'none',cursor:'pointer',color:'#ef4444',padding:0,fontSize:'12px'}},'🗑')
+            )
+          )
+        )
+      )
+    );
+  }
+
+  createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  select, input, button, textarea { font-family: inherit; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#f1f5f9;">
+    <div style="font-size:48px">⚽</div>
+    <p style="color:#64748b;font-weight:600;font-size:16px">読み込み中...</p>
+  </div>
+</div>
+</body>
+</html>
