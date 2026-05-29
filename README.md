@@ -1,0 +1,611 @@
+[jheat2025_v6 (3).html](https://github.com/user-attachments/files/28394507/jheat2025_v6.3.html)
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>J-Heat2025</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Space UI',Arial,sans-serif;background:#0a1628;color:#fff;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{background:linear-gradient(135deg,#16213e,#0f3460);padding:8px 20px;text-align:center;border-bottom:3px solid #e94560;flex-shrink:0}
+header h1{font-size:1.3rem;font-weight:700;color:#fff}
+header p{font-size:0.65rem;color:#aaa}
+.badge{background:#e94560;color:#fff;padding:2px 6px;border-radius:10px;font-size:0.6rem;margin-left:6px}
+.container{display:flex;flex:1;overflow:hidden;min-height:0}
+.left-panel{width:260px;background:#0f2040;border-right:1px solid #1e3a5f;overflow-y:auto;padding:10px;flex-shrink:0}
+.right-panel{flex:1;padding:8px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.section{background:#132035;border-radius:8px;padding:10px;margin-bottom:8px;border:1px solid #1e3a5f}
+.section h3{font-size:0.75rem;color:#4fc3f7;margin-bottom:8px;border-bottom:1px solid #1e3a5f;padding-bottom:4px}
+.form-group{margin-bottom:6px}
+.form-group label{display:block;font-size:0.65rem;color:#aaa;margin-bottom:2px}
+.form-group input,.form-group select{width:100%;background:#0a1628;border:1px solid #1e3a5f;color:#fff;padding:5px 8px;border-radius:4px;font-size:0.75rem}
+.btn{padding:5px 10px;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;margin:2px}
+.btn-primary{background:#e94560;color:#fff}
+.btn-success{background:#27ae60;color:#fff}
+.btn-info{background:#3498db;color:#fff}
+.btn-warning{background:#f39c12;color:#fff}
+.btn-danger{background:#c0392b;color:#fff}
+.btn-secondary{background:#555;color:#fff}
+.btn:hover{opacity:0.85}
+.formation-grid{display:flex;flex-wrap:wrap;gap:4px}
+.formation-btn{padding:4px 6px;border:1px solid #1e3a5f;border-radius:4px;background:#0a1628;color:#aaa;cursor:pointer;font-size:0.6rem;text-align:center;transition:all 0.2s;min-width:60px}
+.formation-btn.active{background:#e94560;color:#fff;border-color:#e94560}
+.formation-btn .f-name{font-weight:700;font-size:0.65rem}
+.formation-btn .f-desc{font-size:0.5rem;color:#888}
+.formation-btn.active .f-desc{color:#ffaaaa}
+.bench-table,.player-table{width:100%;border-collapse:collapse;font-size:0.65rem}
+.bench-table th,.player-table th{background:#0a1628;padding:3px 4px;text-align:left;color:#4fc3f7;border-bottom:1px solid #1e3a5f}
+.bench-table td,.player-table td{padding:3px 4px;border-bottom:1px solid #0a1628;color:#ddd;vertical-align:middle}
+.bench-table tr:hover,.player-table tr:hover{background:#1a2f4a}
+.color-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.color-label{font-size:0.65rem;color:#aaa}
+.color-swatch{width:22px;height:22px;border-radius:50%;border:2px solid #555;cursor:pointer;display:inline-block}
+.sets-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:6px;flex:1;min-height:0}
+.set-card{background:#132035;border-radius:6px;border:2px solid #1e3a5f;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color 0.2s;min-height:0}
+.set-card.active-set{border-color:#e94560}
+.set-card:hover{border-color:#4fc3f7}
+.set-header{background:#0a1628;padding:3px 8px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.set-header span{font-size:0.65rem;color:#fff;font-weight:700}
+.set-header .f-tag{font-size:0.55rem;color:#4fc3f7;background:#1e3a5f;padding:1px 4px;border-radius:3px}
+.set-svg{flex:1;min-height:0;width:100%}
+#editForm{display:none}
+.sub-select{display:flex;gap:6px;flex-wrap:wrap}
+.sub-select select{flex:1;min-width:80px}
+@media(max-width:900px){
+  .left-panel{width:180px}
+  .right-panel{padding:4px}
+  .sets-grid{gap:3px}
+}
+@media(max-width:600px){
+  .container{flex-direction:column}
+  .left-panel{width:100%;height:auto;border-right:none;border-bottom:1px solid #1e3a5f;overflow-y:visible}
+  .right-panel{flex:1;padding:3px}
+  .mobile-tabs{display:flex!important}
+  .mobile-panel{display:none}
+  .mobile-panel.active{display:flex;flex-direction:column;flex:1}
+}
+.mobile-tabs{display:none;background:#0a1628;border-bottom:1px solid #1e3a5f;flex-shrink:0}
+.mobile-tab-btn{flex:1;padding:8px;border:none;background:transparent;color:#aaa;cursor:pointer;font-size:0.75rem;border-bottom:3px solid transparent}
+.mobile-tab-btn.active{color:#4fc3f7;border-bottom-color:#4fc3f7}
+@media(max-width:400px){
+  .sets-grid{grid-template-columns:1fr;grid-template-rows:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="mobile-tabs" id="mobileTabs">
+  <button class="mobile-tab-btn active" onclick="switchMobileTab('field')">📊 フィールド</button>
+  <button class="mobile-tab-btn" onclick="switchMobileTab('settings')">⚙️ 設定・編集</button>
+</div>
+<div class="container">
+<div class="left-panel mobile-panel" id="leftPanel">
+  <div class="section">
+    <h3>🏟 チーム設定</h3>
+    <div class="form-group"><label>チーム名</label><input type="text" id="teamName" value="J-Heat FC" oninput="updateHeader()"></div>
+    <div class="color-row">
+      <span class="color-label">ユニ色</span>
+      <input type="color" id="uniColor" value="#1565c0" style="width:30px;height:24px;border:none;background:none;cursor:pointer" onchange="redrawAll()">
+      <span class="color-label">GK色</span>
+      <input type="color" id="gkColor" value="#e65100" style="width:30px;height:24px;border:none;background:none;cursor:pointer" onchange="redrawAll()">
+      <span class="color-label">文字色</span>
+      <input type="color" id="txtColor" value="#ffffff" style="width:30px;height:24px;border:none;background:none;cursor:pointer" onchange="redrawAll()">
+    </div>
+  </div>
+  <div class="section">
+    <h3>⚡ フォーメーション選択 <span style="font-size:0.55rem;color:#aaa">(選択中セットに適用)</span></h3>
+    <div class="formation-grid" id="formationGrid"></div>
+  </div>
+  <div class="section">
+    <h3>👤 選手編集</h3>
+    <div id="editHint" style="font-size:0.65rem;color:#888;text-align:center;padding:8px">フィールドの選手をクリックして編集</div>
+    <div id="editForm">
+      <div class="form-group"><label>名前</label><input type="text" id="eName" placeholder="選手名" style="font-size:0.9rem;font-weight:bold;padding:8px"></div>
+      <div class="form-group"><label>ポジション</label>
+        <select id="ePos">
+          <option value="GK">GK</option><option value="DF">DF</option>
+          <option value="MF">MF</option><option value="FW">FW</option><option value="AM">AM</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-success" onclick="saveEdit()">💾 保存</button>
+        <button class="btn btn-secondary" onclick="cancelEdit()">✕ キャンセル</button>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <h3>🪑 控えメンバー登録</h3>
+    <table class="bench-table" id="benchTable">
+      <thead><tr><th>#</th><th>名前</th><th>POS</th><th></th></tr></thead>
+      <tbody id="benchBody"></tbody>
+    </table>
+    <button class="btn btn-info" style="margin-top:6px;width:100%" onclick="addBenchRow()">＋ 控え選手追加</button>
+  </div>
+  <div class="section">
+    <h3>🔄 交代メンバー</h3>
+    <div class="sub-select">
+      <div style="flex:1"><label style="font-size:0.6rem;color:#aaa">OUT（スタメン）</label>
+        <select id="subOut" style="width:100%;background:#0a1628;border:1px solid #1e3a5f;color:#fff;padding:4px;border-radius:4px;font-size:0.7rem"><option value="">選択...</option></select></div>
+      <div style="flex:1"><label style="font-size:0.6rem;color:#aaa">IN（控え）</label>
+        <select id="subIn" style="width:100%;background:#0a1628;border:1px solid #1e3a5f;color:#fff;padding:4px;border-radius:4px;font-size:0.7rem"><option value="">選択...</option></select></div>
+    </div>
+    <div style="margin-top:6px;display:flex;gap:4px">
+      <button class="btn btn-warning" onclick="setSub()">交代設定</button>
+      <button class="btn btn-danger" onclick="clearSub()">✕ 履歴クリア</button>
+    </div>
+  </div>
+  <div class="section">
+    <h3>📋 選手一覧(セット<span id="setNumLabel">1</span>)</h3>
+    <table class="player-table" id="playerTable">
+      <thead><tr><th>#</th><th>名前</th><th>POS</th></tr></thead>
+      <tbody id="playerBody"></tbody>
+    </table>
+  </div>
+  <div class="section">
+    <h3>💾 保存・読込・出力</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">
+      <button class="btn btn-success" onclick="saveJSON()">💾 保存(JSON)</button>
+      <button class="btn btn-info" onclick="loadJSON()">📂 読込</button>
+      <button class="btn btn-warning" onclick="exportPNG()">🖼 PNG出力</button>
+      <button class="btn btn-danger" onclick="resetAll()">🔄 リセット</button>
+    </div>
+  </div>
+</div>
+<div class="right-panel mobile-panel active" id="rightPanel">
+  <div style="background:#0a1628;padding:4px 8px;border-radius:6px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-shrink:0">
+    <span style="font-size:0.7rem;color:#fff">チーム: <strong id="hTeam">J-Heat FC</strong></span>
+    <span style="font-size:0.7rem;color:#aaa">フォーメーション: <strong id="hForm">4-1-1</strong></span>
+    <span style="font-size:0.7rem;color:#aaa">選手: <strong id="hCount">GK1 + FP6 = 7人</strong></span>
+  </div>
+  <div style="font-size:0.65rem;color:#4fc3f7;margin-bottom:4px;flex-shrink:0">📋 全セット一覧 クリックで編集セット切替</div>
+  <div class="sets-grid" id="setsGrid">
+    <div class="set-card active-set" id="setCard0">
+      <div class="set-header"><span>セット1</span><span class="f-tag" id="fTag0">4-1-1</span></div>
+      <svg class="set-svg" id="svg0" viewBox="0 0 120 160" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="set-card" id="setCard1">
+      <div class="set-header"><span>セット2</span><span class="f-tag" id="fTag1">4-1-1</span></div>
+      <svg class="set-svg" id="svg1" viewBox="0 0 120 160" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="set-card" id="setCard2">
+      <div class="set-header"><span>セット3</span><span class="f-tag" id="fTag2">4-1-1</span></div>
+      <svg class="set-svg" id="svg2" viewBox="0 0 120 160" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="set-card" id="setCard3">
+      <div class="set-header"><span>セット4</span><span class="f-tag" id="fTag3">4-1-1</span></div>
+      <svg class="set-svg" id="svg3" viewBox="0 0 120 160" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+  <div style="text-align:center;padding:4px;font-size:0.6rem;color:#555;flex-shrink:0">💡 選手アイコンをクリックして情報を編集できます</div>
+</div>
+</div>
+<script>
+const FORMATIONS = {
+  '4-1-1':{name:'4-1-1',desc:'DF4-MF1-FW1',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:20,y:110},{p:'DF',x:46,y:110},{p:'DF',x:74,y:110},{p:'DF',x:100,y:110},
+    {p:'MF',x:60,y:75},{p:'FW',x:60,y:35}]},
+  '2-3-1':{name:'2-3-1',desc:'DF2-MF3-FW1',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:35,y:115},{p:'DF',x:85,y:115},
+    {p:'MF',x:20,y:75},{p:'MF',x:60,y:75},{p:'MF',x:100,y:75},{p:'FW',x:60,y:35}]},
+  '3-2-1':{name:'3-2-1',desc:'DF3-MF2-FW1',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:25,y:115},{p:'DF',x:60,y:115},{p:'DF',x:95,y:115},
+    {p:'MF',x:38,y:78},{p:'MF',x:82,y:78},{p:'FW',x:60,y:35}]},
+  '2-2-2':{name:'2-2-2',desc:'DF2-MF2-FW2',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:35,y:115},{p:'DF',x:85,y:115},
+    {p:'MF',x:35,y:78},{p:'MF',x:85,y:78},{p:'FW',x:35,y:38},{p:'FW',x:85,y:38}]},
+  '1-3-2':{name:'1-3-2',desc:'DF1-MF3-FW2',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:60,y:115},
+    {p:'MF',x:20,y:78},{p:'MF',x:60,y:78},{p:'MF',x:100,y:78},{p:'FW',x:35,y:38},{p:'FW',x:85,y:38}]},
+  '3-1-2':{name:'3-1-2',desc:'DF3-MF1-FW2',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:25,y:115},{p:'DF',x:60,y:115},{p:'DF',x:95,y:115},
+    {p:'MF',x:60,y:78},{p:'FW',x:35,y:38},{p:'FW',x:85,y:38}]},
+  '1-4-1':{name:'1-4-1',desc:'DF1-MF4-FW1',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:60,y:115},
+    {p:'MF',x:15,y:78},{p:'MF',x:42,y:78},{p:'MF',x:78,y:78},{p:'MF',x:105,y:78},{p:'FW',x:60,y:35}]},
+  '2-2-1-1':{name:'2-2-1-1',desc:'DF2-MF2-AM1-FW1',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:35,y:115},{p:'DF',x:85,y:115},
+    {p:'MF',x:35,y:85},{p:'MF',x:85,y:85},{p:'AM',x:60,y:60},{p:'FW',x:60,y:32}]},
+  '1-2-2-1':{name:'1-2-2-1',desc:'DF1-MF2-AM2-FW1',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:60,y:118},
+    {p:'MF',x:35,y:92},{p:'MF',x:85,y:92},{p:'AM',x:35,y:60},{p:'AM',x:85,y:60},{p:'FW',x:60,y:30}]},
+  '2-1-2-1':{name:'2-1-2-1',desc:'DF2-MF1-AM2-FW1',pos:[
+    {p:'GK',x:60,y:145},{p:'DF',x:35,y:115},{p:'DF',x:85,y:115},
+    {p:'MF',x:60,y:88},{p:'AM',x:35,y:58},{p:'AM',x:85,y:58},{p:'FW',x:60,y:30}]}
+};
+let sets=[],currentSet=0,editIdx=-1,bench=[],subs=[];
+function mkPl(fk){return FORMATIONS[fk].pos.map((p,i)=>({pos:p.p,name:'',x:p.x,y:p.y,idx:i}));}
+function init(){
+  for(let i=0;i<4;i++) sets.push({formation:'4-1-1',players:mkPl('4-1-1'),subs:[]});
+  buildFormationBtns();
+  for(let i=0;i<4;i++) drawField(i);
+  updateSubSelects();
+  updatePlayerTable();
+  updateHeader();
+  setupSetCardClicks();
+}
+function setupSetCardClicks(){
+  for(let i=0;i<4;i++){
+    (function(si){
+      document.getElementById('setCard'+si).addEventListener('click',function(e){
+        if(e.target.closest('svg')) return;
+        switchSet(si);
+      });
+    })(i);
+  }
+}
+function switchSet(i){
+  currentSet=i;
+  document.querySelectorAll('.set-card').forEach((c,j)=>c.classList.toggle('active-set',j===i));
+  document.getElementById('setNumLabel').textContent=i+1;
+  updateHeader();
+  updatePlayerTable();
+  updateSubSelects();
+  cancelEdit();
+}
+function buildFormationBtns(){
+  const grid=document.getElementById('formationGrid');
+  grid.innerHTML='';
+  Object.keys(FORMATIONS).forEach(function(k){
+    const f=FORMATIONS[k];
+    const btn=document.createElement('button');
+    btn.className='formation-btn'+(k==='4-1-1'?' active':'');
+    btn.innerHTML='<div class="f-name">'+f.name+'</div><div class="f-desc">'+f.desc+'</div>';
+    btn.addEventListener('click',(function(fk){return function(){applyFormation(fk);};})(k));
+    grid.appendChild(btn);
+  });
+}
+function applyFormation(fk){
+  const s=sets[currentSet];
+  const newPos=FORMATIONS[fk].pos;
+  const oldPl=s.players;
+  s.formation=fk;
+  s.players=newPos.map(function(p,i){
+    return {pos:p.p,name:oldPl[i]?oldPl[i].name:'',x:p.x,y:p.y,idx:i};
+  });
+  s.subs=[];
+  document.querySelectorAll('.formation-btn').forEach(function(b,j){
+    b.classList.toggle('active',Object.keys(FORMATIONS)[j]===fk);
+  });
+  document.getElementById('fTag'+currentSet).textContent=fk;
+  drawField(currentSet);
+  updateHeader();
+  updatePlayerTable();
+  cancelEdit();
+}
+function updateHeader(){
+  const s=sets[currentSet];
+  document.getElementById('hTeam').textContent=document.getElementById('teamName').value||'J-Heat FC';
+  document.getElementById('hForm').textContent=s.formation;
+  const gk=s.players.filter(function(p){return p.pos==='GK';}).length;
+  const fp=s.players.length-gk;
+  document.getElementById('hCount').textContent='GK'+gk+' + FP'+fp+' = '+(gk+fp)+'人';
+}
+</script>
+<script>
+function openEdit(setIdx,plIdx){
+  currentSet=setIdx;
+  document.querySelectorAll('.set-card').forEach(function(c,j){c.classList.toggle('active-set',j===setIdx);});
+  document.getElementById('setNumLabel').textContent=setIdx+1;
+  editIdx=plIdx;
+  const pl=sets[setIdx].players[plIdx];
+  document.getElementById('eName').value=pl.name||'';
+  document.getElementById('ePos').value=pl.pos||'GK';
+  document.getElementById('editHint').style.display='none';
+  document.getElementById('editForm').style.display='block';
+  if(window.innerWidth<=600){
+    const tabs=document.querySelectorAll('.mobile-tab-btn');
+    tabs.forEach(function(t){t.classList.remove('active');});
+    tabs[1].classList.add('active');
+    document.getElementById('leftPanel').classList.add('active');
+    document.getElementById('rightPanel').classList.remove('active');
+  }
+  updatePlayerTable();
+  updateSubSelects();
+}
+function saveEdit(){
+  if(editIdx<0) return;
+  const pl=sets[currentSet].players[editIdx];
+  pl.name=document.getElementById('eName').value.trim();
+  pl.pos=document.getElementById('ePos').value;
+  drawField(currentSet);
+  updatePlayerTable();
+  updateSubSelects();
+  updateHeader();
+  cancelEdit();
+}
+function cancelEdit(){
+  editIdx=-1;
+  document.getElementById('editHint').style.display='block';
+  document.getElementById('editForm').style.display='none';
+}
+function addBenchRow(){
+  bench.push({name:'',pos:'MF'});
+  renderBench();
+}
+function renderBench(){
+  const tbody=document.getElementById('benchBody');
+  tbody.innerHTML='';
+  bench.forEach(function(b,i){
+    const tr=document.createElement('tr');
+    const tdN=document.createElement('td');
+    tdN.textContent=i+1;
+    const tdName=document.createElement('td');
+    const inp=document.createElement('input');
+    inp.type='text';inp.value=b.name;inp.placeholder='名前';
+    inp.style.cssText='width:100%;background:#0a1628;border:1px solid #1e3a5f;color:#fff;padding:2px 4px;border-radius:3px;font-size:0.65rem';
+    inp.addEventListener('input',(function(idx){return function(){bench[idx].name=this.value;};})(i));
+    tdName.appendChild(inp);
+    const tdPos=document.createElement('td');
+    const sel=document.createElement('select');
+    sel.style.cssText='background:#0a1628;border:1px solid #1e3a5f;color:#fff;padding:2px;border-radius:3px;font-size:0.65rem';
+    ['GK','DF','MF','FW','AM'].forEach(function(p){
+      const o=document.createElement('option');o.value=p;o.textContent=p;
+      if(p===b.pos) o.selected=true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change',(function(idx){return function(){bench[idx].pos=this.value;updateSubSelects();};})(i));
+    tdPos.appendChild(sel);
+    const tdDel=document.createElement('td');
+    const btn=document.createElement('button');
+    btn.textContent='✕';btn.style.cssText='background:#c0392b;color:#fff;border:none;border-radius:3px;padding:1px 4px;cursor:pointer;font-size:0.6rem';
+    btn.addEventListener('click',(function(idx){return function(){bench.splice(idx,1);renderBench();updateSubSelects();};})(i));
+    tdDel.appendChild(btn);
+    tr.appendChild(tdN);tr.appendChild(tdName);tr.appendChild(tdPos);tr.appendChild(tdDel);
+    tbody.appendChild(tr);
+  });
+  updateSubSelects();
+}
+function updateSubSelects(){
+  const s=sets[currentSet];
+  const outSel=document.getElementById('subOut');
+  const inSel=document.getElementById('subIn');
+  const outVal=outSel.value,inVal=inSel.value;
+  outSel.innerHTML='<option value="">選択...</option>';
+  s.players.forEach(function(p,i){
+    const o=document.createElement('option');
+    o.value=i;o.textContent=(p.name||('選手'+(i+1)))+' ('+p.pos+')';
+    outSel.appendChild(o);
+  });
+  inSel.innerHTML='<option value="">選択...</option>';
+  bench.forEach(function(b,i){
+    const o=document.createElement('option');
+    o.value=i;o.textContent=(b.name||('控え'+(i+1)))+' ('+b.pos+')';
+    inSel.appendChild(o);
+  });
+  if(outVal) outSel.value=outVal;
+  if(inVal) inSel.value=inVal;
+}
+function setSub(){
+  const outIdx=document.getElementById('subOut').value;
+  const inIdx=document.getElementById('subIn').value;
+  if(outIdx===''||inIdx==='') return alert('OUTとINを選択してください');
+  const s=sets[currentSet];
+  s.subs=s.subs.filter(function(x){return x.outIdx!=outIdx;});
+  s.subs.push({outIdx:parseInt(outIdx),inIdx:parseInt(inIdx),benchPlayer:bench[parseInt(inIdx)]});
+  drawField(currentSet);
+}
+function clearSub(){
+  sets[currentSet].subs=[];
+  drawField(currentSet);
+}
+function updatePlayerTable(){
+  const s=sets[currentSet];
+  const tbody=document.getElementById('playerBody');
+  tbody.innerHTML='';
+  s.players.forEach(function(p,i){
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+(i+1)+'</td><td>'+(p.name||'(未設定)')+'</td><td>'+p.pos+'</td>';
+    tbody.appendChild(tr);
+  });
+}
+function switchMobileTab(tab){
+  const tabs=document.querySelectorAll('.mobile-tab-btn');
+  tabs.forEach(function(t){t.classList.remove('active');});
+  if(tab==='field'){
+    tabs[0].classList.add('active');
+    document.getElementById('rightPanel').classList.add('active');
+    document.getElementById('leftPanel').classList.remove('active');
+  } else {
+    tabs[1].classList.add('active');
+    document.getElementById('leftPanel').classList.add('active');
+    document.getElementById('rightPanel').classList.remove('active');
+  }
+}
+</script>
+<script>
+function drawField(si){
+  const svg=document.getElementById('svg'+si);
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  const ns='http://www.w3.org/2000/svg';
+  function mk(tag,attrs){
+    const el=document.createElementNS(ns,tag);
+    Object.keys(attrs).forEach(function(k){el.setAttribute(k,attrs[k]);});
+    return el;
+  }
+  // Field background
+  svg.appendChild(mk('rect',{x:0,y:0,width:120,height:160,fill:'#2d7a2d'}));
+  // Field markings
+  svg.appendChild(mk('rect',{x:5,y:5,width:110,height:150,fill:'none',stroke:'#fff',opacity:'0.6','stroke-width':'1'}));
+  svg.appendChild(mk('rect',{x:35,y:5,width:50,height:20,fill:'none',stroke:'#fff',opacity:'0.5','stroke-width':'0.8'}));
+  svg.appendChild(mk('rect',{x:35,y:135,width:50,height:20,fill:'none',stroke:'#fff',opacity:'0.5','stroke-width':'0.8'}));
+  svg.appendChild(mk('rect',{x:45,y:5,width:30,height:10,fill:'none',stroke:'#fff',opacity:'0.4','stroke-width':'0.7'}));
+  svg.appendChild(mk('rect',{x:45,y:145,width:30,height:10,fill:'none',stroke:'#fff',opacity:'0.4','stroke-width':'0.7'}));
+  svg.appendChild(mk('line',{x1:5,y1:80,x2:115,y2:80,stroke:'#fff',opacity:'0.5','stroke-width':'0.8'}));
+  svg.appendChild(mk('circle',{cx:60,cy:80,r:15,fill:'none',stroke:'#fff',opacity:'0.5','stroke-width':'0.8'}));
+  svg.appendChild(mk('circle',{cx:60,cy:80,r:1,fill:'#fff',opacity:'0.6'}));
+  svg.appendChild(mk('circle',{cx:60,cy:10,r:1,fill:'#fff',opacity:'0.5'}));
+  svg.appendChild(mk('circle',{cx:60,cy:150,r:1,fill:'#fff',opacity:'0.5'}));
+
+  const s=sets[si];
+  const uniColor=document.getElementById('uniColor').value||'#1565c0';
+  const gkColor=document.getElementById('gkColor').value||'#e65100';
+
+  s.players.forEach(function(pl,i){
+    const sub=s.subs.find(function(x){return x.outIdx===i;});
+    const r=9;
+    const cx=pl.x,cy=pl.y;
+    const iconColor=pl.pos==='GK'?gkColor:uniColor;
+    const isOut=!!sub;
+    const opacity=isOut?'0.3':'1';
+
+    // Player circle
+    const circle=mk('circle',{cx:cx,cy:cy,r:r,fill:iconColor,opacity:opacity,stroke:isOut?'#e74c3c':'rgba(255,255,255,0.3)','stroke-width':isOut?'1.5':'0.5',cursor:'pointer'});
+    svg.appendChild(circle);
+
+    // Position text inside circle (SVG units: font-size 5)
+    const posText=mk('text',{x:cx,y:cy+0.5,'text-anchor':'middle','dominant-baseline':'middle',fill:'#ffffff','font-size':'5','font-weight':'bold',opacity:opacity,cursor:'pointer','pointer-events':'none'});
+    posText.textContent=pl.pos;
+    svg.appendChild(posText);
+
+    // OUT marker
+    if(isOut){
+      const x1=cx-6,y1=cy-6,x2=cx+6,y2=cy+6;
+      svg.appendChild(mk('line',{x1:x1,y1:y1,x2:x2,y2:y2,stroke:'#e74c3c','stroke-width':'2',opacity:'0.9'}));
+      svg.appendChild(mk('line',{x1:x2,y1:y1,x2:x1,y2:y2,stroke:'#e74c3c','stroke-width':'2',opacity:'0.9'}));
+    }
+
+    // Name label with white background box
+    if(pl.name){
+      const nameLen=pl.name.length;
+      // SVG coordinate space: font-size in SVG units
+      let fontSize=5.5;
+      if(nameLen>=7) fontSize=4;
+      else if(nameLen>=5) fontSize=4.5;
+      else if(nameLen>=3) fontSize=5;
+
+      const charW=fontSize*0.65;
+      const boxW=nameLen*charW+4;
+      const boxH=fontSize+3;
+      const boxX=cx-boxW/2;
+      const boxY=cy+r+1.5;
+
+      // White background rectangle with rounded corners
+      const bgRect=mk('rect',{
+        x:boxX,y:boxY,
+        width:boxW,height:boxH,
+        fill:'white',rx:'1.5',ry:'1.5',
+        opacity:'0.92',
+        'pointer-events':'none'
+      });
+      svg.appendChild(bgRect);
+
+      // Name text (black on white background)
+      const nameText=mk('text',{
+        x:cx,y:boxY+boxH/2+0.3,
+        'text-anchor':'middle','dominant-baseline':'middle',
+        fill:'#111111','font-size':fontSize,'font-weight':'bold',
+        cursor:'pointer','pointer-events':'none'
+      });
+      nameText.textContent=pl.name;
+      svg.appendChild(nameText);
+    }
+
+    // SUB IN player display
+    if(isOut && sub.benchPlayer){
+      const bp=sub.benchPlayer;
+      const inColor='#e67e22';
+      const inCx=cx+r+8,inCy=cy-r-3;
+      const arr=mk('line',{x1:cx+r,y1:cy,x2:inCx-7,y2:inCy,'stroke':'#f39c12','stroke-width':'1.2','stroke-dasharray':'2,1',opacity:'0.9'});
+      svg.appendChild(arr);
+      svg.appendChild(mk('circle',{cx:inCx,cy:inCy,r:7,fill:inColor,opacity:'0.95',stroke:'rgba(255,255,255,0.4)','stroke-width':'0.5'}));
+      const inPosT=mk('text',{x:inCx,y:inCy+0.5,'text-anchor':'middle','dominant-baseline':'middle',fill:'#fff','font-size':'4','font-weight':'bold','pointer-events':'none'});
+      inPosT.textContent=bp.pos||'?';
+      svg.appendChild(inPosT);
+      if(bp.name){
+        const inNameLen=bp.name.length;
+        let inFontSize=5;
+        if(inNameLen>=7) inFontSize=4;
+        else if(inNameLen>=5) inFontSize=4.5;
+        const inCharW=inFontSize*0.65;
+        const inBoxW=inNameLen*inCharW+4;
+        const inBoxH=inFontSize+3;
+        const inBoxX=inCx-inBoxW/2;
+        const inBoxY=inCy+7+1.5;
+        const inBgRect=mk('rect',{
+          x:inBoxX,y:inBoxY,width:inBoxW,height:inBoxH,
+          fill:'white',rx:'1.5',ry:'1.5',opacity:'0.92','pointer-events':'none'
+        });
+        svg.appendChild(inBgRect);
+        const inNameT=mk('text',{
+          x:inCx,y:inBoxY+inBoxH/2+0.3,
+          'text-anchor':'middle','dominant-baseline':'middle',
+          fill:'#111111','font-size':inFontSize,'font-weight':'bold','pointer-events':'none'
+        });
+        inNameT.textContent=bp.name;
+        svg.appendChild(inNameT);
+      }
+    }
+
+    // Click / touch handler
+    (function(sIdx,pIdx){
+      circle.addEventListener('click',function(e){e.stopPropagation();openEdit(sIdx,pIdx);});
+      circle.addEventListener('touchend',function(e){e.preventDefault();e.stopPropagation();openEdit(sIdx,pIdx);});
+    })(si,i);
+  });
+}
+function redrawAll(){for(var i=0;i<4;i++) drawField(i);}
+</script>
+<script>
+function saveJSON(){
+  const data={teamName:document.getElementById('teamName').value,uniColor:document.getElementById('uniColor').value,gkColor:document.getElementById('gkColor').value,txtColor:document.getElementById('txtColor').value,sets:sets,bench:bench};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='jheat2025.json';a.click();
+}
+function loadJSON(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=function(e){
+    const f=e.target.files[0];if(!f) return;
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      try{
+        const d=JSON.parse(ev.target.result);
+        if(d.teamName) document.getElementById('teamName').value=d.teamName;
+        if(d.uniColor) document.getElementById('uniColor').value=d.uniColor;
+        if(d.gkColor) document.getElementById('gkColor').value=d.gkColor;
+        if(d.txtColor) document.getElementById('txtColor').value=d.txtColor;
+        if(d.sets) sets=d.sets;
+        if(d.bench) bench=d.bench;
+        renderBench();
+        for(var i=0;i<4;i++) drawField(i);
+        updateHeader();
+        updatePlayerTable();
+        updateSubSelects();
+        sets.forEach(function(s,i){document.getElementById('fTag'+i).textContent=s.formation;});
+        alert('読込完了');
+      }catch(err){alert('読込エラー: '+err.message);}
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+function exportPNG(){
+  const svg=document.getElementById('svg'+currentSet);
+  const svgData=new XMLSerializer().serializeToString(svg);
+  const canvas=document.createElement('canvas');
+  canvas.width=480;canvas.height=640;
+  const ctx=canvas.getContext('2d');
+  const img=new Image();
+  img.onload=function(){
+    ctx.drawImage(img,0,0,480,640);
+    const a=document.createElement('a');
+    a.download='jheat2025_set'+(currentSet+1)+'.png';
+    a.href=canvas.toDataURL('image/png');
+    a.click();
+  };
+  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svgData)));
+}
+function resetAll(){
+  if(!confirm('全データをリセットしますか？')) return;
+  sets=[];bench=[];
+  for(var i=0;i<4;i++) sets.push({formation:'4-1-1',players:mkPl('4-1-1'),subs:[]});
+  renderBench();
+  for(var i=0;i<4;i++){drawField(i);document.getElementById('fTag'+i).textContent='4-1-1';}
+  updateHeader();
+  updatePlayerTable();
+  updateSubSelects();
+  cancelEdit();
+}
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
